@@ -118,10 +118,16 @@ int init_data::parser(std::string field, std::string arg)
         n2 = atoi(arg.c_str());
         return 2;
     }
-    // Парсинг n2
+    // Парсинг метода без аппроксимации
     else if (field == full_fields[6] || field == short_fields[6])
     {
         non_aprox = 1;
+        return 1;
+    }
+    // Выбор решателя VEM
+    else if (field == full_fields[7] || field == short_fields[7])
+    {
+        non_aprox = 2;
         return 1;
     }
     else

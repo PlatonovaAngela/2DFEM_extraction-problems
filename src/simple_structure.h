@@ -15,6 +15,18 @@ struct point
     void init(double x, double y);
 };
 
+point operator*(const point& vec, const double& a);
+
+point operator*(const double& a, const point& vec);
+
+point operator/(const point& vec, const double& a);
+
+point operator-(const point& vec1, const point& vec2);
+
+double dot(const point& vec1, const point& vec2);
+
+double fabs(const point& vec1);
+
 struct box
 {
     int p[4];

@@ -69,3 +69,33 @@ void box::init(int* points, double eps, double a)
 
     this->a = a;
 }
+
+point operator*(const point& vec, const double& a)
+{
+    return { vec.x * a, vec.y * a };
+}
+
+point operator*(const double& a, const point& vec)
+{
+    return vec * a;
+}
+
+point operator/(const point& vec, const double& a)
+{
+    return {vec.x / a, vec.y / a};
+}
+
+point operator-(const point& vec1, const point& vec2)
+{
+    return {vec1.x - vec2.x, vec1.y - vec2.y};
+}
+
+double dot(const point& vec1, const point& vec2)
+{
+    return vec1.x * vec2.x + vec1.y * vec2.y;
+}
+
+double fabs(const point& vec1)
+{
+    return sqrt(vec1.x * vec1.x + vec1.y * vec1.y);
+}

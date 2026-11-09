@@ -223,6 +223,20 @@ int task::save_boxes_geom(const std::string& geomName)
         std::cerr << "Can't save geometry" << std::endl;
         return 1;
     }
+
+    auto func = [&](box b1, box b2)
+        {
+            if (b1.eps != b1.eps)
+                return true;
+            if (b2.eps != b2.eps)
+                return false;
+            if (b1.eps < b2.eps)
+                return true;
+            return false;
+        };
+
+    std::sort(boxes.begin(), boxes.end(), func);
+
     file << "Boxes:\n";
     file << boxes.size() << '\n';
     for (int i = 0; i < boxes.size(); ++i)

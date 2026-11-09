@@ -3,11 +3,11 @@
 #include <iostream>
 #include <string>
 
-const int fields_num = 7;
+const int fields_num = 8;
 
-const std::string full_fields[] = { "--help", "--task_name", "--geom_name", "--save_mesh", "--n1", "--n2", "--no_aproximate"};
+const std::string full_fields[] = { "--help", "--task_name", "--geom_name", "--save_mesh", "--n1", "--n2", "--no_aproximate", "--vem_solver"};
 
-const std::string short_fields[] = { "h", "tn", "g", "m", "n1", "n2", "na"};
+const std::string short_fields[] = { "h", "tn", "g", "m", "n1", "n2", "na", "vem"};
 
 struct init_data
 {
@@ -17,7 +17,7 @@ struct init_data
 	// ƒл€ разбиени€ сетки (разбиение стороны нета, и количество слоев до бокса с меньшим a)
 	int n1;
 	int n2;
-	// запуск варианта без аппроксимации 
+	// запуск варианта без аппроксимации // теперь номер решател€
 	int non_aprox;
 
 	//  онструктор. Ќачальна€ инициализаци€.

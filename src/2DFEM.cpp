@@ -4,9 +4,12 @@
 #include "task.h"
 #include "FEM_solver.h"
 
+#include <chrono>
 
 int main(int argc, char** argv)
 {
+    auto begin = std::chrono::steady_clock::now();
+
     // Чтение аргументов командной строки
     init_data input;
     int err = input.parser(argc, argv);
@@ -34,7 +37,7 @@ int main(int argc, char** argv)
 
     FEM_solver solver;
 
-    err =  solver.make_base_mesh_ver2(cur_task);
+    err =  solver.make_base_mesh(cur_task);
     if (err != 0)
        return err;
     if(input.save_mesh != "")
@@ -44,24 +47,24 @@ int main(int argc, char** argv)
             return err;
     }
     
-    if (input.non_aprox == 1)
+    if (input.non_aprox == 1 || input.non_aprox == 2)
         solver.classify_verts_ver1(cur_task);
     else
         solver.classify_verts_ver2(cur_task);
-
-    //solver.debug_mesh_with_classification();
-    //solver.debug_approx();
+    solver.fix_orientation();
 
     solver.perform_new_numeration();
-    solver.make_system_of_linear_equations();
-    
+    if(input.non_aprox == 2)
+        solver.vem_make_SLAE();
+    else
+        solver.make_system_of_linear_equations();
 
     std::vector<double> diagonals;
     int Netsize = cur_task.get_nets_size();
     for (int i = 0; i < Netsize; ++i)
     {
         solver.make_right(i);
-        solver.solve_system();
+        solver.solve_system();;
         diagonals.push_back(solver.get_C());
     }
 
@@ -81,6 +84,11 @@ int main(int argc, char** argv)
         }
         std::cout << "C[" << i + 1 << "][GND] = " << GRD[i] << "\n";
     }
+
+    auto end = std::chrono::steady_clock::now();
+
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    std::cout << "The time: " << elapsed_ms.count() << " ms\n";
 
     return 0;
     

@@ -3,7 +3,7 @@
 #include "task.h"
 #include <algorithm>
 #include <Eigen/Sparse>
-
+#include <Eigen/Dense>
 
 struct FEM_point: public point
 {
@@ -116,7 +116,12 @@ class FEM_solver
 
 		void debug_save_portrait(std::vector<Eigen::Triplet<double>>& triplets);
 
+		void debug_save_mesh_for_VEM(std::string filename);
+		
+		void fix_orientation();
 
+		// Решатель VEM
+		int vem_make_SLAE();
 };
 
 bool point_in_line(point p, task& problem, line curline);

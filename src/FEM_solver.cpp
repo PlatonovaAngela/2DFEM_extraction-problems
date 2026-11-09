@@ -65,32 +65,6 @@ bool FEM_solver::find_local_verts(std::vector<int>& local_verts, int icell)
                 break;
         }
     }
-
-    /*for (int ivert : cells[icell].down_points)
-    {
-        local_verts.push_back(ivert);
-        simple_cell = false;
-    }
-
-    for (int ivert : cells[icell].right_points)
-    {
-        local_verts.push_back(ivert);
-        simple_cell = false;
-    }
-
-    for (int ivert : cells[icell].up_points)
-    {
-        local_verts.push_back(ivert);
-        simple_cell = false;
-    }
-
-    for (int ivert : cells[icell].left_points)
-    {
-        local_verts.push_back(ivert);
-        simple_cell = false;
-    }*/
-        
-
     return simple_cell;
 }
 
@@ -2163,7 +2137,7 @@ int FEM_solver::solve_system()
     //MSolver.analyzePattern(SMatrix);
     //MSolver.factorize(SMatrix);
     //if (MSolver.info() != Eigen::Success)
-    //{
+    //{ 
     //    std::cerr << "Solver's error." << std::endl;
     //}
 
@@ -2532,4 +2506,230 @@ bool point_in_line(point p, task& problem, line curline)
         p.x > problem.get_point(curline.lp).x && p.x < problem.get_point(curline.rp).x)
         return true;
     return false;
+}
+
+void FEM_solver::debug_save_mesh_for_VEM(std::string filename)
+{
+    std::vector<std::vector<int>> edges;
+    std::vector<std::vector<int>> edges_bound;
+
+    std::vector<std::vector<int>> cellverts;
+    
+
+    cellverts.resize(cells.size());
+    edges.resize(verts.size());
+    edges_bound.resize(verts.size());
+    for (int icell = 0; icell < cells.size(); ++icell)
+    {
+        // Заполнение cellverts
+        if (icell == 3847)
+            std::cout << 1;
+        if (icell == 3204)
+            std::cout << 1;
+        FEM_cell cur_cell = cells[icell];
+        int n = 4;
+        n += cur_cell.down_points.size();
+        n += cur_cell.right_points.size();
+        n += cur_cell.up_points.size();
+        n += cur_cell.left_points.size();
+
+        cellverts[icell].push_back(n);
+        cellverts[icell].push_back(cur_cell.p[0]);
+        for(auto it = cur_cell.down_points.begin(); it != cur_cell.down_points.end(); ++it)
+            cellverts[icell].push_back(*it);
+        cellverts[icell].push_back(cur_cell.p[1]);
+        for (auto it = cur_cell.right_points.rbegin(); it != cur_cell.right_points.rend(); ++it)
+            cellverts[icell].push_back(*it);
+        cellverts[icell].push_back(cur_cell.p[2]);
+        for (auto it = cur_cell.up_points.rbegin(); it != cur_cell.up_points.rend(); ++it)
+            cellverts[icell].push_back(*it);
+        cellverts[icell].push_back(cur_cell.p[3]);
+        for (auto it = cur_cell.left_points.begin(); it != cur_cell.left_points.end(); ++it)
+            cellverts[icell].push_back(*it);
+
+
+        //Заполнение edges
+        for (int i = 0; i < n; i++)
+        {
+            int v1 = cellverts[icell][i + 1];
+            int v2 = cellverts[icell][(i + 1) % n + 1];
+
+            if (v1 > v2)
+                std::swap(v1, v2);
+
+            auto it = std::find(edges[v1].begin(), edges[v1].end(), v2);
+            if (it == edges[v1].end())
+            {
+                edges[v1].push_back(v2);
+                if (verts[v1].boundary_ind == verts[v2].boundary_ind)
+                {
+                    if (verts[v1].boundary_ind == -1)
+                        edges_bound[v1].push_back(1);
+                    else if (verts[v1].boundary_ind == -2)
+                        edges_bound[v1].push_back(2);
+                    else if (verts[v1].boundary_ind >= 0)
+                        edges_bound[v1].push_back(verts[v1].boundary_ind + 3);
+                    else
+                        edges_bound[v1].push_back(0);
+                }
+                else
+                {
+                    if(verts[v1].boundary_ind == -1 && verts[v2].boundary_ind == -2)
+                        edges_bound[v1].push_back(1);
+                    else if (verts[v1].boundary_ind == -2 && verts[v2].boundary_ind == -1)
+                        edges_bound[v1].push_back(1);
+                    else
+                        edges_bound[v1].push_back(0);
+                }
+            }
+        }
+
+    }
+
+    int nEdges = 0;
+    for (int ivert = 0; ivert < verts.size(); ++ivert)
+        nEdges += edges[ivert].size();
+
+    std::ofstream file(filename + ".mesh");
+
+    file << verts.size() << " " << nEdges << " " << cells.size() << "\n";
+    for (int ivert = 0; ivert < verts.size(); ++ivert)
+        file << verts[ivert].x << " " << verts[ivert].y << "\n";
+
+    for (int ivert = 0; ivert < verts.size(); ++ivert)
+        for (int j = 0; j < edges[ivert].size(); ++j)
+            file << ivert << " " << edges[ivert][j] << " " << edges_bound[ivert][j] << '\n';
+
+    for (int icell = 0; icell < cells.size(); ++icell)
+    {
+        file << cellverts[icell][0];
+        for (int i = 1; i <= cellverts[icell][0]; ++i)
+            file << " " << cellverts[icell][i];
+        file << "\n";
+    }
+
+    file.close();
+
+}
+
+void FEM_solver::fix_orientation()
+{
+    auto vert_sort_func = [&](int i, int j)
+        {
+            if (verts[i].y > verts[j].y)
+                return true;
+            return false;
+        };
+
+    auto horz_sort_func = [&](int i, int j)
+        {
+            if (verts[i].x < verts[j].x)
+                return true;
+            return false;
+        };
+
+    for (int icell = 0; icell < cells.size(); ++icell)
+    {
+        std::sort(cells[icell].down_points.begin(), cells[icell].down_points.end(), horz_sort_func);
+        std::sort(cells[icell].right_points.begin(), cells[icell].right_points.end(), vert_sort_func);
+        std::sort(cells[icell].up_points.begin(), cells[icell].up_points.end(), horz_sort_func);
+        std::sort(cells[icell].left_points.begin(), cells[icell].left_points.end(), vert_sort_func);
+    }
+
+
+}
+
+int FEM_solver::vem_make_SLAE()
+{
+    right = Eigen::VectorXd(number_of_independent);
+    std::vector<int> local_verts;
+    std::vector<point> linear_polynomials = { {0.0, 0.0},{1.0, 0.0}, {0.0, 1.0} };
+    Eigen::MatrixXd stiff;
+    Eigen::MatrixXd group_stiff;
+
+    bool simple;
+    int cur_group = -1;
+    for (int icell = 0; icell < cells.size(); ++icell)
+    {
+        simple = find_local_verts(local_verts, icell);
+        if (cur_group != cells[icell].group || !simple)
+        {
+            // Вычисление площади 
+            double area = (verts[cells[icell].p[1]].x - verts[cells[icell].p[0]].x) * (verts[cells[icell].p[2]].y - verts[cells[icell].p[0]].y);
+
+            // Поиск центройда
+            point centroid;
+            centroid.x = (verts[cells[icell].p[2]].x + verts[cells[icell].p[0]].x) / 2;
+            centroid.y = (verts[cells[icell].p[2]].y + verts[cells[icell].p[0]].y) / 2;
+
+            // Поиск диаметра
+            double diameter = fabs(verts[cells[icell].p[2]] - verts[cells[icell].p[0]]);
+
+            Eigen::MatrixXd D(local_verts.size(), linear_polynomials.size());
+            Eigen::MatrixXd B(linear_polynomials.size(), local_verts.size());
+            D.setZero();
+            B.setZero();
+            for (int i = 0; i < local_verts.size(); ++i)
+            {
+                D(i, 0) = 1.0;
+                B(0, i) = 1.0 / local_verts.size();
+            }
+
+            for (int ivert = 0; ivert < local_verts.size(); ++ivert)
+            {
+                int curr_vert = local_verts[ivert];
+                int prev_vert = local_verts[(ivert + local_verts.size() - 1) % local_verts.size()];
+                int next_vert = local_verts[(ivert + 1) % local_verts.size()];
+                point vert_normal = { (verts[next_vert].y - verts[prev_vert].y),
+                                      (verts[prev_vert].x - verts[next_vert].x) };
+
+                for (int ipoly = 1; ipoly < 3; ++ipoly)
+                {
+                    point poly_degree = linear_polynomials[ipoly];
+                    point poly_grads = poly_degree / diameter;
+                    D(ivert, ipoly) = dot(verts[curr_vert] - centroid, poly_degree) / diameter;
+                    B(ipoly, ivert) = 0.5 * dot(poly_grads, vert_normal);
+                }
+            }
+
+            Eigen::MatrixXd projector = (B * D).inverse() * B;
+            Eigen::MatrixXd stab(local_verts.size(), local_verts.size());
+            Eigen::MatrixXd E = Eigen::MatrixXd::Identity(local_verts.size(), local_verts.size());
+            stab = (E - D * projector).transpose() * (E - D * projector);
+            Eigen::MatrixXd G = B * D;
+            for (int i = 0; i < linear_polynomials.size(); ++i)
+            {
+                G(0, i) = 0.0;
+            }
+            stiff = projector.transpose() * G * projector + stab;
+            
+            if (simple)
+            {
+                group_stiff = stiff;
+                cur_group = cells[icell].group;
+            }
+        }
+        else
+        {
+            stiff = group_stiff;
+        }
+
+        for (int i = 0; i < local_verts.size(); ++i)
+        {
+            if (verts[local_verts[i]].boundary_ind == -2 || verts[local_verts[i]].boundary_ind >= 0)
+                continue;
+            for (int j = 0; j < local_verts.size(); ++j)
+            {
+                if (verts[local_verts[j]].boundary_ind == -2)
+                    continue;
+                LS_Triplets.push_back({ local_verts[i], local_verts[j],
+                    cells[icell].eps * stiff(i,j)});
+            }
+        }
+
+    }
+
+    right = Eigen::VectorXd(number_of_independent);
+
+    return 0;
 }
